@@ -1,0 +1,23 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.env
+.env.*
+
+# Airflow runtime logs (DAGs are tracked)
+airflow/logs/**
+!airflow/logs/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Docker volumes are not in the repo; ignore local overrides if any
+docker-compose.override.yml
+
+# Too large for GitHub (>100 MB); download via scripts/download-hive-jars.*
+hive-jars/aws-java-sdk-bundle-*.jar

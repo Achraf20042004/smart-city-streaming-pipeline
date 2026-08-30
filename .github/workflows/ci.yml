@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start stack
+        run: docker compose up -d
+
+      - name: Wait for core services
+        run: |
+          wait_healthy() {
+            local name="$1" timeout="$2" elapsed=0
+            until [ "$(docker inspect "$name" --format '{{.State.Health.Status}}' 2>/dev/null)" = "healthy" ]; do
+              sleep 5
+              elapsed=$((elapsed + 5))
+              if [ "$elapsed" -ge "$timeout" ]; then
+                echo "Timed out waiting for $name"
+                docker logs "$name" --tail 50 || true
+                exit 1
+              fi
+            done
+            echo "$name is healthy"
+          }
+
+          wait_healthy zookeeper 120
+          wait_healthy broker 180
+          wait_healthy minio 120
+          wait_healthy clickhouse 180
+          wait_healthy trino 300
+
+          # One-shot init containers must finish successfully
+          for name in kafka-init minio-init; do
+            status="$(docker inspect "$name" --format '{{.State.Status}}' 2>/dev/null || echo missing)"
+            if [ "$status" != "exited" ]; then
+              echo "Waiting for $name to finish (status=$status)..."
+              sleep 10
+            fi
+            exit_code="$(docker inspect "$name" --format '{{.State.ExitCode}}' 2>/dev/null || echo 1)"
+            if [ "$exit_code" != "0" ]; then
+              echo "$name failed with exit code $exit_code"
+              docker logs "$name" --tail 50 || true
+              exit 1
+            fi
+            echo "$name completed successfully"
+          done
+
+      - name: Smoke test — Kafka topics
+        run: |
+          topics="$(docker exec broker kafka-topics --bootstrap-server localhost:9092 --list)"
+          for topic in vehicle_data gps_data traffic_data weather_data emergency_data; do
+            echo "$topics" | grep -q "^${topic}$" || { echo "Missing topic: $topic"; exit 1; }
+          done
+          echo "All Kafka topics present"
+
+      - name: Smoke test — ClickHouse
+        run: |
+          docker exec clickhouse clickhouse-client --query "SELECT 1"
+          docker exec clickhouse clickhouse-client --query "SHOW TABLES FROM smartcity" | grep -q vehicle_data
+          echo "ClickHouse schema OK"
+
+      - name: Smoke test — Trino
+        run: |
+          curl -sf http://localhost:8080/v1/info | grep -q '"nodeVersion"'
+          echo "Trino is up"
+
+      - name: Smoke test — Prometheus targets
+        run: |
+          sleep 15
+          curl -sf http://localhost:9091/api/v1/targets | grep -q '"health":"up"'
+          echo "Prometheus scraping metrics"
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --tail 100
