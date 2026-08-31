@@ -6,13 +6,13 @@ The stack runs in Docker. The only host-side Python dependency is the Kafka prod
 
 ## What you get
 
-- **Streaming ingestion** — Python producer → Kafka (5 topics)
-- **Batch/stream processing** — Spark Structured Streaming → MinIO (S3-compatible) → Hive Metastore
-- **SQL on the lake** — Trino
-- **Real-time OLAP** — ClickHouse (Kafka engine + MergeTree)
-- **Orchestration** — Airflow (health checks + daily summaries)
-- **Monitoring** — Prometheus + Grafana
-- **CI** — GitHub Actions smoke tests on push
+- **Streaming ingestion**  Python producer → Kafka (5 topics)
+- **Batch/stream processing**  Spark Structured Streaming → MinIO (S3-compatible) → Hive Metastore
+- **SQL on the lake**  Trino
+- **Real-time OLAP**  ClickHouse (Kafka engine + MergeTree)
+- **Orchestration**  Airflow (health checks + daily summaries)
+- **Monitoring**  Prometheus + Grafana
+- **CI**  GitHub Actions smoke tests on push
 
 ## Architecture
 
