@@ -116,7 +116,7 @@ python main.py
 
 ### What you must do manually
 
-1. **Apply ClickHouse schema** — run `init-clickhouse` after ClickHouse is healthy (see steps above).
+1. **Apply ClickHouse schema** , run `init-clickhouse` after ClickHouse is healthy (see steps above).
 2. **Submit the Spark streaming job** — Spark workers start with compose, but `spark-city.py` must be submitted separately.
 3. **Run the producer** — start after ClickHouse schema is in place so real-time tables can consume messages.
 
