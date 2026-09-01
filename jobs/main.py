@@ -11,9 +11,6 @@ import time
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(line_buffering=True)
 
-random.seed(42)
-
-
 LONDON_COORDINATES= {"latitude": 51.5074, "longitude": -0.1278}
 BIRMINGHAM_COORDINATES= {"latitude": 52.4862, "longitude": -1.8904}
 
@@ -44,6 +41,23 @@ EMERGENCY_TOPIC = os.getenv('EMERGENCY_TOPIC','emergency_data')
 start_time = datetime.now()
 start_location = LONDON_COORDINATES.copy()
 
+SPEED_MIN_KMH = 0
+SPEED_MAX_KMH = 140
+COORD_JITTER_DEG = 0.0005
+
+
+def new_device_id():
+    return f"Vehicle-{random.randint(1, 999):03d}"
+
+
+def new_camera_id():
+    return f"Camera-{random.randint(1, 999):03d}"
+
+
+def apply_speed_jitter(speed):
+    jittered = speed * (1 + random.uniform(-0.05, 0.05))
+    return round(max(SPEED_MIN_KMH, min(SPEED_MAX_KMH, jittered)), 2)
+
 
 def get_next_time():
     global start_time
@@ -60,13 +74,13 @@ def format_location(location):
     return f"{location['latitude']},{location['longitude']}"
 
 
-def generate_gps_data(device_id, timestamp, vehicle_type='private'):
+def generate_gps_data(device_id, timestamp, vehicle_speed, vehicle_type='private'):
     return {
         'id': uuid.uuid4(),
         'deviceId': device_id,
         'timestamp': timestamp,
-        'speed': random.uniform(0,40),
-        'direction': 'North-East',
+        'speed': apply_speed_jitter(vehicle_speed),
+        'direction': random.choice(['North', 'North-East', 'East', 'South-East', 'South']),
         'vehicleType': vehicle_type
     }
 
@@ -127,20 +141,20 @@ def simulate_vehicle_movement():
     #move towards birmongham
     start_location['latitude'] += LATITUDE_INCREMENT
     start_location['longitude'] += LONGITUDE_INCREMENT
-    #add some randomness to simulate actual road travel
-    start_location['latitude'] += random.uniform(-0.0005, 0.0005)
-    start_location['longitude'] += random.uniform(-0.0005, 0.0005)
+    start_location['latitude'] += random.uniform(-COORD_JITTER_DEG, COORD_JITTER_DEG)
+    start_location['longitude'] += random.uniform(-COORD_JITTER_DEG, COORD_JITTER_DEG)
     return start_location
 
-def generate_vehicle_data(device_id):
+def generate_vehicle_data(device_id, current_speed):
     location = simulate_vehicle_movement()
+    speed = apply_speed_jitter(current_speed)
     return {
         'id' : uuid.uuid4(),
         'deviceId' : device_id,
         'timestamp': get_next_time().isoformat(),
         'location': format_location(location),
-        'speed' : random.uniform(10,40),
-        'direction':'North-East',
+        'speed' : speed,
+        'direction': random.choice(['North', 'North-East', 'East', 'South-East', 'South']),
         'make' : 'BMW',
         'model': 'C500',
         'year': 2024,
@@ -180,10 +194,15 @@ def produce_data_to_kafka(producer, topic, data):
 
 
 def simulate_journey(producer, device_id):
+    current_speed = random.uniform(20, 60)
+    camera_id = new_camera_id()
     while True:
-        vehicle_data = generate_vehicle_data(device_id)
-        gps_data = generate_gps_data(device_id, vehicle_data['timestamp'])
-        traffic_camera_data = generate_traffic_camera_data(device_id, vehicle_data['timestamp'],vehicle_data['location'],'Nikon-Cam123')
+        vehicle_data = generate_vehicle_data(device_id, current_speed)
+        current_speed = vehicle_data['speed']
+        gps_data = generate_gps_data(device_id, vehicle_data['timestamp'], current_speed)
+        traffic_camera_data = generate_traffic_camera_data(
+            device_id, vehicle_data['timestamp'], vehicle_data['location'], camera_id
+        )
         weather_data = generate_weather_data(device_id, vehicle_data['timestamp'], vehicle_data['location'])
         emergency_incident_data = generate_emergency_incident_data(device_id, vehicle_data['timestamp'],vehicle_data['location'])
 
@@ -214,7 +233,7 @@ if __name__ == "__main__":
     producer = Producer(producer_config)
 
     try:
-        simulate_journey(producer, 'Vehicle-CodeWithYu-123')
+        simulate_journey(producer, new_device_id())
 
     except KeyboardInterrupt:
         print('Simulation ended by the user')
