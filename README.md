@@ -117,8 +117,8 @@ python main.py
 ### What you must do manually
 
 1. **Apply ClickHouse schema** , run `init-clickhouse` after ClickHouse is healthy (see steps above).
-2. **Submit the Spark streaming job** — Spark workers start with compose, but `spark-city.py` must be submitted separately.
-3. **Run the producer** — start after ClickHouse schema is in place so real-time tables can consume messages.
+2. **Submit the Spark streaming job** : Spark workers start with compose, but `spark-city.py` must be submitted separately.
+3. **Run the producer** : start after ClickHouse schema is in place so real-time tables can consume messages.
 
 ### Producer behavior
 
@@ -139,11 +139,11 @@ That is sufficient. Spark (`pyspark`), Airflow, Trino, and ClickHouse all run in
 
 | Service     | URL                        | Login                   |
 |-------------|----------------------------|-------------------------|
-| Spark UI    | http://localhost:9090      | —                       |
-| Trino       | http://localhost:8080      | —                       |
-| ClickHouse  | http://localhost:8123/play | —                       |
+| Spark UI    | http://localhost:9090      | :                       |
+| Trino       | http://localhost:8080      | :                       |
+| ClickHouse  | http://localhost:8123/play | :                       |
 | Grafana     | http://localhost:3000      | admin / admin           |
-| Prometheus  | http://localhost:9091      | —                       |
+| Prometheus  | http://localhost:9091      | :                       |
 | Airflow     | http://localhost:8085      | admin / admin           |
 | MinIO       | http://localhost:9001      | minioadmin / minioadmin |
 
@@ -192,7 +192,7 @@ docker exec project-spark-master-1 spark-submit \
 
 Trigger them manually from the Airflow UI after the stack is running.
 
-**Note on `smartcity_daily_summary`:** it aggregates rows where `toDate(timestamp) = yesterday()`. On the first day (or if you only ran the producer today), the INSERT may produce zero rows. That is expected — wait until the next calendar day, or adjust the DAG query for testing.
+**Note on `smartcity_daily_summary`:** it aggregates rows where `toDate(timestamp) = yesterday()`. On the first day (or if you only ran the producer today), the INSERT may produce zero rows. That is expected : wait until the next calendar day, or adjust the DAG query for testing.
 
 ## Project layout
 
