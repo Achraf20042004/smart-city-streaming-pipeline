@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS smartcity.gps_data_kafka
     id String,
     deviceId String,
     timestamp String,
+    location String,
     speed Float64,
     direction String,
     vehicleType String
@@ -78,6 +79,7 @@ CREATE TABLE IF NOT EXISTS smartcity.gps_data
     id String,
     deviceId String,
     timestamp DateTime64(3),
+    location String,
     speed Float64,
     direction String,
     vehicleType String
@@ -91,6 +93,7 @@ SELECT
     id,
     deviceId,
     parseDateTime64BestEffort(timestamp) AS timestamp,
+    location,
     speed,
     direction,
     vehicleType

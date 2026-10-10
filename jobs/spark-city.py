@@ -86,7 +86,7 @@ def create_hive_tables(spark: SparkSession) -> None:
     spark.sql(
         f"""
         CREATE EXTERNAL TABLE IF NOT EXISTS smartcity.gps_data (
-            id STRING, deviceId STRING, timestamp TIMESTAMP,
+            id STRING, deviceId STRING, timestamp TIMESTAMP, location STRING,
             speed DOUBLE, direction STRING, vehicleType STRING
         )
         USING PARQUET
@@ -153,6 +153,7 @@ def main():
             StructField("id", StringType(), True),
             StructField("deviceId", StringType(), True),
             StructField("timestamp", TimestampType(), True),
+            StructField("location", StringType(), True),
             StructField("speed", DoubleType(), True),
             StructField("direction", StringType(), True),
             StructField("vehicleType", StringType(), True),

@@ -154,7 +154,7 @@ Airflow may take a minute or two to become ready after the rest of the stack is 
 | Topic           | Content                         |
 |-----------------|---------------------------------|
 | vehicle_data    | speed, location, make, model    |
-| gps_data        | GPS speed, direction            |
+| gps_data        | GPS speed, location, direction  |
 | traffic_data    | camera snapshots                |
 | weather_data    | temperature, AQI, precipitation |
 | emergency_data  | incidents (accident, fire, etc.) |

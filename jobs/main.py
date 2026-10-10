@@ -74,11 +74,12 @@ def format_location(location):
     return f"{location['latitude']},{location['longitude']}"
 
 
-def generate_gps_data(device_id, timestamp, vehicle_speed, vehicle_type='private'):
+def generate_gps_data(device_id, timestamp, location, vehicle_speed, vehicle_type='private'):
     return {
         'id': uuid.uuid4(),
         'deviceId': device_id,
         'timestamp': timestamp,
+        'location': format_location(location),
         'speed': apply_speed_jitter(vehicle_speed),
         'direction': random.choice(['North', 'North-East', 'East', 'South-East', 'South']),
         'vehicleType': vehicle_type
@@ -199,7 +200,7 @@ def simulate_journey(producer, device_id):
     while True:
         vehicle_data = generate_vehicle_data(device_id, current_speed)
         current_speed = vehicle_data['speed']
-        gps_data = generate_gps_data(device_id, vehicle_data['timestamp'], current_speed)
+        gps_data = generate_gps_data(device_id, vehicle_data['timestamp'], vehicle_data['location'], current_speed)
         traffic_camera_data = generate_traffic_camera_data(
             device_id, vehicle_data['timestamp'], vehicle_data['location'], camera_id
         )
