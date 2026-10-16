@@ -37,7 +37,8 @@ CREATE TABLE IF NOT EXISTS smartcity.vehicle_data
     fuelType String
 )
 ENGINE = MergeTree
-ORDER BY (deviceId, timestamp);
+ORDER BY (deviceId, timestamp)
+TTL toDateTime(timestamp) + INTERVAL 30 DAY;
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS smartcity.vehicle_data_mv
 TO smartcity.vehicle_data AS
@@ -85,7 +86,8 @@ CREATE TABLE IF NOT EXISTS smartcity.gps_data
     vehicleType String
 )
 ENGINE = MergeTree
-ORDER BY (deviceId, timestamp);
+ORDER BY (deviceId, timestamp)
+TTL toDateTime(timestamp) + INTERVAL 30 DAY;
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS smartcity.gps_data_mv
 TO smartcity.gps_data AS
@@ -128,7 +130,8 @@ CREATE TABLE IF NOT EXISTS smartcity.traffic_data
     snapshot String
 )
 ENGINE = MergeTree
-ORDER BY (deviceId, timestamp);
+ORDER BY (deviceId, timestamp)
+TTL toDateTime(timestamp) + INTERVAL 30 DAY;
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS smartcity.traffic_data_mv
 TO smartcity.traffic_data AS
@@ -178,7 +181,8 @@ CREATE TABLE IF NOT EXISTS smartcity.weather_data
     airQualityIndex Float64
 )
 ENGINE = MergeTree
-ORDER BY (deviceId, timestamp);
+ORDER BY (deviceId, timestamp)
+TTL toDateTime(timestamp) + INTERVAL 30 DAY;
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS smartcity.weather_data_mv
 TO smartcity.weather_data AS
@@ -228,7 +232,8 @@ CREATE TABLE IF NOT EXISTS smartcity.emergency_data
     description String
 )
 ENGINE = MergeTree
-ORDER BY (deviceId, timestamp);
+ORDER BY (deviceId, timestamp)
+TTL toDateTime(timestamp) + INTERVAL 30 DAY;
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS smartcity.emergency_data_mv
 TO smartcity.emergency_data AS
