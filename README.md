@@ -205,9 +205,7 @@ project/
 │   ├── main.py                 # Kafka data simulator
 │   ├── config.py               # MinIO settings for Spark jobs
 │   ├── spark-city.py           # Spark structured streaming job
-│   ├── verify_pipeline.py      # smoke test for the lake path
-│   ├── run-spark.bat           # Windows shortcut to submit Spark job
-│   └── restart-spark.bat       # stop Spark apps + clear checkpoints
+│   └── verify_pipeline.py      # smoke test for the lake path
 ├── clickhouse/
 │   ├── init/                   # ClickHouse DDL (Kafka engine + MergeTree)
 │   └── config.d/               # Prometheus metrics endpoint
@@ -219,6 +217,8 @@ project/
 │   ├── download-hive-jars.sh   # same, for Linux/macOS
 │   ├── init-clickhouse.ps1     # apply ClickHouse schema
 │   ├── run-spark.ps1           # submit Spark streaming job
+│   ├── stop-spark.ps1          # stop running Spark apps
+│   ├── reset-checkpoints.ps1   # clear Spark checkpoints in MinIO
 │   └── run-producer.ps1        # Docker-based producer (Windows workaround)
 ├── hive-jars/                  # Hive JDBC/S3 jars (AWS bundle downloaded at setup)
 ├── hive-conf/                  # Hive Metastore S3/MinIO settings
@@ -234,8 +234,9 @@ If a streaming job was killed mid-run, clear checkpoints before resubmitting:
 **Windows:**
 
 ```powershell
-.\jobs\restart-spark.bat    # stops apps + clears checkpoints
-.\scripts\run-spark.ps1     # submit a fresh job
+.\scripts\stop-spark.ps1         # stop running Spark apps
+.\scripts\reset-checkpoints.ps1  # clear checkpoints
+.\scripts\run-spark.ps1          # submit a fresh job
 ```
 
 **Linux / macOS:**
