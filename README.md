@@ -187,7 +187,7 @@ docker exec project-spark-master-1 spark-submit \
 
 ## Data quality
 
-Every event must carry a non-empty `id` and `deviceId` and a parseable `timestamp`. The same rule is applied on both paths, and rejected events are kept rather than dropped:
+Every event must carry a non-empty `id` and `deviceId` and a parseable `timestamp`, and every field must have the expected type. The same rule is applied on both paths, and rejected events are kept rather than dropped:
 
 | Path       | Invalid events go to                     | How                                                                 |
 |------------|------------------------------------------|---------------------------------------------------------------------|

@@ -58,7 +58,7 @@ FROM smartcity.vehicle_data_kafka
 WHERE length(_error) = 0
   AND id != ''
   AND deviceId != ''
-  AND parseDateTime64BestEffortOrNull(timestamp) IS NOT NULL;
+  AND parseDateTime64BestEffortOrNull(vehicle_data_kafka.timestamp) IS NOT NULL;
 
 -- ── gps_data ──────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS smartcity.gps_data_kafka
@@ -109,7 +109,7 @@ FROM smartcity.gps_data_kafka
 WHERE length(_error) = 0
   AND id != ''
   AND deviceId != ''
-  AND parseDateTime64BestEffortOrNull(timestamp) IS NOT NULL;
+  AND parseDateTime64BestEffortOrNull(gps_data_kafka.timestamp) IS NOT NULL;
 
 -- ── traffic_data ────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS smartcity.traffic_data_kafka
@@ -157,7 +157,7 @@ FROM smartcity.traffic_data_kafka
 WHERE length(_error) = 0
   AND id != ''
   AND deviceId != ''
-  AND parseDateTime64BestEffortOrNull(timestamp) IS NOT NULL;
+  AND parseDateTime64BestEffortOrNull(traffic_data_kafka.timestamp) IS NOT NULL;
 
 -- ── weather_data ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS smartcity.weather_data_kafka
@@ -217,7 +217,7 @@ FROM smartcity.weather_data_kafka
 WHERE length(_error) = 0
   AND id != ''
   AND deviceId != ''
-  AND parseDateTime64BestEffortOrNull(timestamp) IS NOT NULL;
+  AND parseDateTime64BestEffortOrNull(weather_data_kafka.timestamp) IS NOT NULL;
 
 -- ── emergency_data ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS smartcity.emergency_data_kafka
@@ -271,4 +271,4 @@ FROM smartcity.emergency_data_kafka
 WHERE length(_error) = 0
   AND id != ''
   AND deviceId != ''
-  AND parseDateTime64BestEffortOrNull(timestamp) IS NOT NULL;
+  AND parseDateTime64BestEffortOrNull(emergency_data_kafka.timestamp) IS NOT NULL;

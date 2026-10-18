@@ -22,6 +22,7 @@ SPARK_PACKAGES = (
 
 CHECKPOINT_BASE = "s3a://spark-streaming-data/checkpoints"
 DATA_BASE = "s3a://spark-streaming-data/data"
+CORRUPT_RECORD = "_corrupt_record"
 
 
 def build_spark() -> SparkSession:
@@ -59,13 +60,18 @@ def read_kafka_topic(spark: SparkSession, topic: str, schema: StructType) -> Dat
             col("timestamp").alias("kafka_timestamp"),
             col("value").cast("string").alias("raw_value"),
         )
-        .withColumn("data", from_json(col("raw_value"), schema))
+        .withColumn(
+            "data",
+            from_json(
+                col("raw_value"),
+                StructType(schema.fields + [StructField(CORRUPT_RECORD, StringType(), True)]),
+                {"columnNameOfCorruptRecord": CORRUPT_RECORD},
+            ),
+        )
     )
 
 
-def is_valid_event() -> Column:
-    # Same rule as the ClickHouse materialized views: every event needs an id,
-    # a deviceId and a parseable timestamp.
+def has_required_fields() -> Column:
     return (
         col("data.id").isNotNull()
         & (col("data.id") != "")
@@ -75,10 +81,18 @@ def is_valid_event() -> Column:
     )
 
 
+def is_valid_event() -> Column:
+    # Same rule as the ClickHouse materialized views: every event needs an id,
+    # a deviceId and a parseable timestamp, and no field may have a wrong type
+    # (from_json would otherwise just turn that field into NULL).
+    return has_required_fields() & col(f"data.{CORRUPT_RECORD}").isNull()
+
+
 def valid_events(parsed_df: DataFrame) -> DataFrame:
     return (
         parsed_df.filter(is_valid_event())
         .select("data.*")
+        .drop(CORRUPT_RECORD)
         .withWatermark("timestamp", "2 minutes")
     )
 
@@ -95,7 +109,8 @@ def rejected_events(parsed_df: DataFrame) -> DataFrame:
         "kafka_offset",
         "kafka_timestamp",
         when(unparseable, lit("unparseable message"))
-        .otherwise(lit("missing id/deviceId or invalid timestamp"))
+        .when(~has_required_fields(), lit("missing id/deviceId or invalid timestamp"))
+        .otherwise(lit("invalid field type"))
         .alias("reason"),
         "raw_value",
     )
