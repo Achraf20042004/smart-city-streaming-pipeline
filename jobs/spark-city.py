@@ -1,6 +1,7 @@
 import os
 import sys
-from pyspark.sql import DataFrame, SparkSession
+from functools import reduce
+from pyspark.sql import Column, DataFrame, SparkSession
 from config import MINIO_CONFIG
 from pyspark.sql.types import (
     DoubleType,
@@ -10,7 +11,7 @@ from pyspark.sql.types import (
     StructType,
     TimestampType,
 )
-from pyspark.sql.functions import avg, col, count, from_json, window
+from pyspark.sql.functions import avg, col, count, from_json, lit, when, window
 from pyspark.sql.functions import max as spark_max
 
 SPARK_PACKAGES = (
@@ -51,10 +52,52 @@ def read_kafka_topic(spark: SparkSession, topic: str, schema: StructType) -> Dat
         .option("startingOffsets", "earliest")
         .option("failOnDataLoss", "false")
         .load()
-        .selectExpr("CAST(value AS STRING)")
-        .select(from_json(col("value"), schema).alias("data"))
+        .select(
+            col("topic"),
+            col("partition").alias("kafka_partition"),
+            col("offset").alias("kafka_offset"),
+            col("timestamp").alias("kafka_timestamp"),
+            col("value").cast("string").alias("raw_value"),
+        )
+        .withColumn("data", from_json(col("raw_value"), schema))
+    )
+
+
+def is_valid_event() -> Column:
+    # Same rule as the ClickHouse materialized views: every event needs an id,
+    # a deviceId and a parseable timestamp.
+    return (
+        col("data.id").isNotNull()
+        & (col("data.id") != "")
+        & col("data.deviceId").isNotNull()
+        & (col("data.deviceId") != "")
+        & col("data.timestamp").isNotNull()
+    )
+
+
+def valid_events(parsed_df: DataFrame) -> DataFrame:
+    return (
+        parsed_df.filter(is_valid_event())
         .select("data.*")
         .withWatermark("timestamp", "2 minutes")
+    )
+
+
+def rejected_events(parsed_df: DataFrame) -> DataFrame:
+    unparseable = (
+        col("data.id").isNull()
+        & col("data.deviceId").isNull()
+        & col("data.timestamp").isNull()
+    )
+    return parsed_df.filter(~is_valid_event()).select(
+        "topic",
+        "kafka_partition",
+        "kafka_offset",
+        "kafka_timestamp",
+        when(unparseable, lit("unparseable message"))
+        .otherwise(lit("missing id/deviceId or invalid timestamp"))
+        .alias("reason"),
+        "raw_value",
     )
 
 
@@ -161,6 +204,17 @@ def create_hive_tables(spark: SparkSession) -> None:
         """
     )
 
+    spark.sql(
+        f"""
+        CREATE EXTERNAL TABLE IF NOT EXISTS smartcity.rejected_events (
+            topic STRING, kafka_partition INT, kafka_offset BIGINT,
+            kafka_timestamp TIMESTAMP, reason STRING, raw_value STRING
+        )
+        USING PARQUET
+        LOCATION '{DATA_BASE}/rejected_events'
+        """
+    )
+
 
 def main():
     spark = build_spark()
@@ -234,36 +288,36 @@ def main():
 
     create_hive_tables(spark)
 
-    vehicle_df = read_kafka_topic(spark, "vehicle_data", vehicle_schema)
+    topics = {
+        "vehicle_data": vehicle_schema,
+        "gps_data": gps_schema,
+        "traffic_data": traffic_schema,
+        "weather_data": weather_schema,
+        "emergency_data": emergency_schema,
+    }
+    parsed = {
+        topic: read_kafka_topic(spark, topic, schema) for topic, schema in topics.items()
+    }
+
+    for topic, parsed_df in parsed.items():
+        stream_writer(
+            valid_events(parsed_df),
+            f"{CHECKPOINT_BASE}/{topic}",
+            f"{DATA_BASE}/{topic}",
+        )
+
     stream_writer(
-        vehicle_df,
-        f"{CHECKPOINT_BASE}/vehicle_data",
-        f"{DATA_BASE}/vehicle_data",
-    )
-    stream_writer(
-        vehicle_speed_per_minute(vehicle_df),
+        vehicle_speed_per_minute(valid_events(parsed["vehicle_data"])),
         f"{CHECKPOINT_BASE}/vehicle_speed_1min",
         f"{DATA_BASE}/vehicle_speed_1min",
     )
+
+    # Invalid events from every topic go to a single quarantine table
+    # instead of being dropped silently.
     stream_writer(
-        read_kafka_topic(spark, "gps_data", gps_schema),
-        f"{CHECKPOINT_BASE}/gps_data",
-        f"{DATA_BASE}/gps_data",
-    )
-    stream_writer(
-        read_kafka_topic(spark, "traffic_data", traffic_schema),
-        f"{CHECKPOINT_BASE}/traffic_data",
-        f"{DATA_BASE}/traffic_data",
-    )
-    stream_writer(
-        read_kafka_topic(spark, "weather_data", weather_schema),
-        f"{CHECKPOINT_BASE}/weather_data",
-        f"{DATA_BASE}/weather_data",
-    )
-    stream_writer(
-        read_kafka_topic(spark, "emergency_data", emergency_schema),
-        f"{CHECKPOINT_BASE}/emergency_data",
-        f"{DATA_BASE}/emergency_data",
+        reduce(DataFrame.unionByName, [rejected_events(df) for df in parsed.values()]),
+        f"{CHECKPOINT_BASE}/rejected_events",
+        f"{DATA_BASE}/rejected_events",
     )
 
     print("Smart City streaming job started. Waiting for data...", flush=True)

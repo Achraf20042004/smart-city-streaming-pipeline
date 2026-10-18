@@ -185,12 +185,32 @@ docker exec project-spark-master-1 spark-submit \
   /opt/spark/jobs/verify_pipeline.py
 ```
 
+## Data quality
+
+Every event must carry a non-empty `id` and `deviceId` and a parseable `timestamp`. The same rule is applied on both paths, and rejected events are kept rather than dropped:
+
+| Path       | Invalid events go to                     | How                                                                 |
+|------------|------------------------------------------|---------------------------------------------------------------------|
+| ClickHouse | `smartcity.kafka_errors` (dead-letter)   | `kafka_handle_error_mode = 'stream'` + `*_errors_mv` views          |
+| Spark      | `smartcity.rejected_events` (Hive table) | invalid rows are filtered out of the topic tables and quarantined   |
+
+The `smartcity_data_quality` DAG then checks, every hour: data freshness, dead-letter volume, duplicate ids and value ranges.
+
+```sql
+SELECT topic, error, raw_message FROM smartcity.kafka_errors ORDER BY received_at DESC LIMIT 10;
+```
+
+**Upgrading an existing ClickHouse volume:** `CREATE ... IF NOT EXISTS` does not modify existing objects. Either start from a fresh volume (`docker compose down -v`) or drop the `*_kafka` tables and `*_mv` views, add the column (`ALTER TABLE smartcity.<table> ADD COLUMN IF NOT EXISTS ingested_at DateTime DEFAULT now()`) and re-run `scripts/init-clickhouse.ps1`.
+
 ## Airflow DAGs
 
 | DAG                      | Schedule | What it does                                        |
 |--------------------------|----------|-----------------------------------------------------|
 | smartcity_health_check   | hourly   | pings ClickHouse, Trino, Kafka exporter, Prometheus |
+| smartcity_data_quality   | hourly   | freshness, dead-letter, duplicate and range checks  |
 | smartcity_daily_summary  | daily    | rolls up yesterday's vehicle stats in ClickHouse    |
+
+`smartcity_data_quality` is expected to fail its freshness check when the producer has not run in the last hour.
 
 Trigger them manually from the Airflow UI after the stack is running.
 

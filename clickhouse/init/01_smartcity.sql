@@ -21,7 +21,7 @@ SETTINGS
     kafka_group_name = 'clickhouse_vehicle',
     kafka_format = 'JSONEachRow',
     kafka_num_consumers = 1,
-    kafka_skip_broken_messages = 1;
+    kafka_handle_error_mode = 'stream';
 
 CREATE TABLE IF NOT EXISTS smartcity.vehicle_data
 (
@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS smartcity.vehicle_data
     make String,
     model String,
     year Int32,
-    fuelType String
+    fuelType String,
+    ingested_at DateTime DEFAULT now()
 )
 ENGINE = MergeTree
 ORDER BY (deviceId, timestamp)
@@ -45,7 +46,7 @@ TO smartcity.vehicle_data AS
 SELECT
     id,
     deviceId,
-    parseDateTime64BestEffort(timestamp) AS timestamp,
+    parseDateTime64BestEffortOrZero(timestamp) AS timestamp,
     location,
     speed,
     direction,
@@ -53,7 +54,11 @@ SELECT
     model,
     year,
     fuelType
-FROM smartcity.vehicle_data_kafka;
+FROM smartcity.vehicle_data_kafka
+WHERE length(_error) = 0
+  AND id != ''
+  AND deviceId != ''
+  AND parseDateTime64BestEffortOrNull(timestamp) IS NOT NULL;
 
 -- ── gps_data ──────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS smartcity.gps_data_kafka
@@ -73,7 +78,7 @@ SETTINGS
     kafka_group_name = 'clickhouse_gps',
     kafka_format = 'JSONEachRow',
     kafka_num_consumers = 1,
-    kafka_skip_broken_messages = 1;
+    kafka_handle_error_mode = 'stream';
 
 CREATE TABLE IF NOT EXISTS smartcity.gps_data
 (
@@ -83,7 +88,8 @@ CREATE TABLE IF NOT EXISTS smartcity.gps_data
     location String,
     speed Float64,
     direction String,
-    vehicleType String
+    vehicleType String,
+    ingested_at DateTime DEFAULT now()
 )
 ENGINE = MergeTree
 ORDER BY (deviceId, timestamp)
@@ -94,12 +100,16 @@ TO smartcity.gps_data AS
 SELECT
     id,
     deviceId,
-    parseDateTime64BestEffort(timestamp) AS timestamp,
+    parseDateTime64BestEffortOrZero(timestamp) AS timestamp,
     location,
     speed,
     direction,
     vehicleType
-FROM smartcity.gps_data_kafka;
+FROM smartcity.gps_data_kafka
+WHERE length(_error) = 0
+  AND id != ''
+  AND deviceId != ''
+  AND parseDateTime64BestEffortOrNull(timestamp) IS NOT NULL;
 
 -- ── traffic_data ────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS smartcity.traffic_data_kafka
@@ -118,7 +128,7 @@ SETTINGS
     kafka_group_name = 'clickhouse_traffic',
     kafka_format = 'JSONEachRow',
     kafka_num_consumers = 1,
-    kafka_skip_broken_messages = 1;
+    kafka_handle_error_mode = 'stream';
 
 CREATE TABLE IF NOT EXISTS smartcity.traffic_data
 (
@@ -127,7 +137,8 @@ CREATE TABLE IF NOT EXISTS smartcity.traffic_data
     cameraId String,
     location String,
     timestamp DateTime64(3),
-    snapshot String
+    snapshot String,
+    ingested_at DateTime DEFAULT now()
 )
 ENGINE = MergeTree
 ORDER BY (deviceId, timestamp)
@@ -140,9 +151,13 @@ SELECT
     deviceId,
     cameraId,
     location,
-    parseDateTime64BestEffort(timestamp) AS timestamp,
+    parseDateTime64BestEffortOrZero(timestamp) AS timestamp,
     snapshot
-FROM smartcity.traffic_data_kafka;
+FROM smartcity.traffic_data_kafka
+WHERE length(_error) = 0
+  AND id != ''
+  AND deviceId != ''
+  AND parseDateTime64BestEffortOrNull(timestamp) IS NOT NULL;
 
 -- ── weather_data ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS smartcity.weather_data_kafka
@@ -165,7 +180,7 @@ SETTINGS
     kafka_group_name = 'clickhouse_weather',
     kafka_format = 'JSONEachRow',
     kafka_num_consumers = 1,
-    kafka_skip_broken_messages = 1;
+    kafka_handle_error_mode = 'stream';
 
 CREATE TABLE IF NOT EXISTS smartcity.weather_data
 (
@@ -178,7 +193,8 @@ CREATE TABLE IF NOT EXISTS smartcity.weather_data
     precipitation Float64,
     windspeed Float64,
     humidity Int32,
-    airQualityIndex Float64
+    airQualityIndex Float64,
+    ingested_at DateTime DEFAULT now()
 )
 ENGINE = MergeTree
 ORDER BY (deviceId, timestamp)
@@ -190,14 +206,18 @@ SELECT
     id,
     deviceId,
     location,
-    parseDateTime64BestEffort(timestamp) AS timestamp,
+    parseDateTime64BestEffortOrZero(timestamp) AS timestamp,
     temperature,
     weatherCondition,
     precipitation,
     windspeed,
     humidity,
     airQualityIndex
-FROM smartcity.weather_data_kafka;
+FROM smartcity.weather_data_kafka
+WHERE length(_error) = 0
+  AND id != ''
+  AND deviceId != ''
+  AND parseDateTime64BestEffortOrNull(timestamp) IS NOT NULL;
 
 -- ── emergency_data ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS smartcity.emergency_data_kafka
@@ -218,7 +238,7 @@ SETTINGS
     kafka_group_name = 'clickhouse_emergency',
     kafka_format = 'JSONEachRow',
     kafka_num_consumers = 1,
-    kafka_skip_broken_messages = 1;
+    kafka_handle_error_mode = 'stream';
 
 CREATE TABLE IF NOT EXISTS smartcity.emergency_data
 (
@@ -229,7 +249,8 @@ CREATE TABLE IF NOT EXISTS smartcity.emergency_data
     timestamp DateTime64(3),
     location String,
     status String,
-    description String
+    description String,
+    ingested_at DateTime DEFAULT now()
 )
 ENGINE = MergeTree
 ORDER BY (deviceId, timestamp)
@@ -242,8 +263,12 @@ SELECT
     deviceId,
     incidentId,
     type,
-    parseDateTime64BestEffort(timestamp) AS timestamp,
+    parseDateTime64BestEffortOrZero(timestamp) AS timestamp,
     location,
     status,
     description
-FROM smartcity.emergency_data_kafka;
+FROM smartcity.emergency_data_kafka
+WHERE length(_error) = 0
+  AND id != ''
+  AND deviceId != ''
+  AND parseDateTime64BestEffortOrNull(timestamp) IS NOT NULL;
