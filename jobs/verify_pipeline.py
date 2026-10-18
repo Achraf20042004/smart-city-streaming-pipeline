@@ -33,6 +33,7 @@ for table in [
     "traffic_data",
     "weather_data",
     "emergency_data",
+    "vehicle_speed_1min",
 ]:
     count = spark.sql(f"SELECT COUNT(*) AS rows FROM smartcity.{table}").collect()[0][0]
     print(f"{table}: {count} rows")

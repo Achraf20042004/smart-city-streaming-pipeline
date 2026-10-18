@@ -159,6 +159,8 @@ Airflow may take a minute or two to become ready after the rest of the stack is 
 | weather_data    | temperature, AQI, precipitation |
 | emergency_data  | incidents (accident, fire, etc.) |
 
+Spark also writes `vehicle_speed_1min`, a windowed aggregate (average/max speed and reading count per vehicle per minute). It relies on the 2-minute watermark, so each window lands in the lake about 2 minutes after it closes.
+
 ## Querying the data
 
 Give the pipeline 30–60 seconds after starting the producer before querying.

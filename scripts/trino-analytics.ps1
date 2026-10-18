@@ -291,6 +291,18 @@ SELECT
 FROM hive.smartcity.vehicle_data
 GROUP BY deviceId, direction
 ORDER BY heading_count DESC
+'@,
+
+@'
+SELECT
+  window_start,
+  deviceId,
+  ROUND(avg_speed, 2) AS avg_speed,
+  ROUND(max_speed, 2) AS max_speed,
+  readings
+FROM hive.smartcity.vehicle_speed_1min
+ORDER BY window_start DESC
+LIMIT 20
 '@
 )
 

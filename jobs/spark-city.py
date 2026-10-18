@@ -10,7 +10,8 @@ from pyspark.sql.types import (
     StructType,
     TimestampType,
 )
-from pyspark.sql.functions import col, from_json
+from pyspark.sql.functions import avg, col, count, from_json, window
+from pyspark.sql.functions import max as spark_max
 
 SPARK_PACKAGES = (
     "org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.4,"
@@ -65,6 +66,27 @@ def stream_writer(input_df: DataFrame, checkpoint_folder: str, output: str):
         .outputMode("append")
         .trigger(processingTime="10 seconds")
         .start()
+    )
+
+
+def vehicle_speed_per_minute(vehicle_df: DataFrame) -> DataFrame:
+    # Relies on the 2-minute watermark: a window is emitted once, after it can
+    # no longer receive late events, and its state is then dropped.
+    return (
+        vehicle_df.groupBy(window(col("timestamp"), "1 minute"), col("deviceId"))
+        .agg(
+            avg("speed").alias("avg_speed"),
+            spark_max("speed").alias("max_speed"),
+            count("*").alias("readings"),
+        )
+        .select(
+            col("window.start").alias("window_start"),
+            col("window.end").alias("window_end"),
+            "deviceId",
+            "avg_speed",
+            "max_speed",
+            "readings",
+        )
     )
 
 
@@ -125,6 +147,17 @@ def create_hive_tables(spark: SparkSession) -> None:
         )
         USING PARQUET
         LOCATION '{DATA_BASE}/emergency_data'
+        """
+    )
+
+    spark.sql(
+        f"""
+        CREATE EXTERNAL TABLE IF NOT EXISTS smartcity.vehicle_speed_1min (
+            window_start TIMESTAMP, window_end TIMESTAMP, deviceId STRING,
+            avg_speed DOUBLE, max_speed DOUBLE, readings BIGINT
+        )
+        USING PARQUET
+        LOCATION '{DATA_BASE}/vehicle_speed_1min'
         """
     )
 
@@ -201,10 +234,16 @@ def main():
 
     create_hive_tables(spark)
 
+    vehicle_df = read_kafka_topic(spark, "vehicle_data", vehicle_schema)
     stream_writer(
-        read_kafka_topic(spark, "vehicle_data", vehicle_schema),
+        vehicle_df,
         f"{CHECKPOINT_BASE}/vehicle_data",
         f"{DATA_BASE}/vehicle_data",
+    )
+    stream_writer(
+        vehicle_speed_per_minute(vehicle_df),
+        f"{CHECKPOINT_BASE}/vehicle_speed_1min",
+        f"{DATA_BASE}/vehicle_speed_1min",
     )
     stream_writer(
         read_kafka_topic(spark, "gps_data", gps_schema),
