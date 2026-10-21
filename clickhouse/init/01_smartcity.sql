@@ -8,11 +8,11 @@ CREATE TABLE IF NOT EXISTS smartcity.vehicle_data_kafka
     timestamp String,
     location String,
     speed Float64,
-    direction String,
     make String,
     model String,
     year Int32,
-    fuelType String
+    fuelType String,
+    vehicleType String
 )
 ENGINE = Kafka
 SETTINGS
@@ -30,11 +30,11 @@ CREATE TABLE IF NOT EXISTS smartcity.vehicle_data
     timestamp DateTime64(3),
     location String,
     speed Float64,
-    direction String,
     make String,
     model String,
     year Int32,
     fuelType String,
+    vehicleType String,
     ingested_at DateTime DEFAULT now()
 )
 ENGINE = MergeTree
@@ -49,11 +49,11 @@ SELECT
     parseDateTime64BestEffortOrZero(timestamp) AS timestamp,
     location,
     speed,
-    direction,
     make,
     model,
     year,
-    fuelType
+    fuelType,
+    vehicleType
 FROM smartcity.vehicle_data_kafka
 WHERE length(_error) = 0
   AND id != ''
@@ -68,8 +68,7 @@ CREATE TABLE IF NOT EXISTS smartcity.gps_data_kafka
     timestamp String,
     location String,
     speed Float64,
-    direction String,
-    vehicleType String
+    direction String
 )
 ENGINE = Kafka
 SETTINGS
@@ -88,7 +87,6 @@ CREATE TABLE IF NOT EXISTS smartcity.gps_data
     location String,
     speed Float64,
     direction String,
-    vehicleType String,
     ingested_at DateTime DEFAULT now()
 )
 ENGINE = MergeTree
@@ -103,8 +101,7 @@ SELECT
     parseDateTime64BestEffortOrZero(timestamp) AS timestamp,
     location,
     speed,
-    direction,
-    vehicleType
+    direction
 FROM smartcity.gps_data_kafka
 WHERE length(_error) = 0
   AND id != ''

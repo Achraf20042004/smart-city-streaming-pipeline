@@ -31,6 +31,7 @@ KAFKA_BOOTSTRAP_SERVERS=os.getenv('KAFKA_BOOTSTRAP_SERVERS','localhost:9092')
 #'localhost:9092'
 #→ valeur par défaut si cette variable d’environnement n’existe pas
 VEHICLE_TOPIC=os.getenv('VEHICLE_TOPIC','vehicle_data') #dans mon programme Python, le topic véhicule s’appellera vehicle_data par défaut.
+#Le topic vehicle_data contient la vitesse (speed) et la localisation (location) 
 GPS_TOPIC=os.getenv('GPS_TOPIC','gps_data')
 TRAFFIC_TOPIC = os.getenv('TRAFFIC_TOPIC','traffic_data')
 WEATHER_TOPIC = os.getenv('WEATHER_TOPIC','weather_data')
@@ -44,10 +45,13 @@ start_location = LONDON_COORDINATES.copy()
 SPEED_MIN_KMH = 0
 SPEED_MAX_KMH = 140
 COORD_JITTER_DEG = 0.0005
+#cela veut dire +ou- 0.0005 sur la longitude ou l attitude a chaque pas (qui simule le trajet)
 
 
 def new_device_id():
     return f"Vehicle-{random.randint(1, 999):03d}"
+
+#d) est écrit sur 3 chiffres minimum, complété par des zéros à gauche (0).
 
 
 def new_camera_id():
@@ -74,16 +78,16 @@ def format_location(location):
     return f"{location['latitude']},{location['longitude']}"
 
 
-def generate_gps_data(device_id, timestamp, location, vehicle_speed, vehicle_type='private'):
+def generate_gps_data(device_id, timestamp, location, vehicle_speed):
     return {
         'id': uuid.uuid4(),
         'deviceId': device_id,
         'timestamp': timestamp,
         'location': format_location(location),
         'speed': apply_speed_jitter(vehicle_speed),
-        'direction': random.choice(['North', 'North-East', 'East', 'South-East', 'South']),
-        'vehicleType': vehicle_type
+        'direction': random.choice(['North', 'North-East', 'East', 'South-East', 'South'])
     }
+
 
 
 
@@ -95,7 +99,7 @@ def generate_gps_data(device_id, timestamp, location, vehicle_speed, vehicle_typ
 def generate_traffic_camera_data(device_id, timestamp, location, camera_id):
     return {
         'id': uuid.uuid4(),
-        'deviceId': device_id,
+        'deviceId': device_id, #identifiant de la voiture (plus précisément, du boîtier connecté installé dedans
         'cameraId': camera_id,
         'location': format_location(location),
         'timestamp': timestamp,
@@ -155,11 +159,11 @@ def generate_vehicle_data(device_id, current_speed):
         'timestamp': get_next_time().isoformat(),
         'location': format_location(location),
         'speed' : speed,
-        'direction': random.choice(['North', 'North-East', 'East', 'South-East', 'South']),
         'make' : 'BMW',
         'model': 'C500',
         'year': 2024,
-        'fuelType':'Hybrid'
+        'fuelType':'Hybrid',
+        'vehicleType': 'private'
     }
 
 

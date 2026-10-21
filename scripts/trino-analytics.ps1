@@ -64,13 +64,13 @@ ORDER BY deviceId, speed_rank
 @'
 SELECT
   vehicleType,
-  COUNT(*) AS gps_points,
-  ROUND(AVG(speed), 2) AS avg_gps_speed,
-  ROUND(MAX(speed), 2) AS max_gps_speed,
+  COUNT(*) AS readings,
+  ROUND(AVG(speed), 2) AS avg_speed,
+  ROUND(MAX(speed), 2) AS max_speed,
   ROUND(STDDEV(speed), 2) AS speed_volatility
-FROM hive.smartcity.gps_data
+FROM hive.smartcity.vehicle_data
 GROUP BY vehicleType
-ORDER BY gps_points DESC
+ORDER BY readings DESC
 '@,
 
 @'
@@ -288,7 +288,7 @@ SELECT
   direction,
   COUNT(*) AS heading_count,
   ROUND(AVG(speed), 2) AS avg_speed_on_heading
-FROM hive.smartcity.vehicle_data
+FROM hive.smartcity.gps_data
 GROUP BY deviceId, direction
 ORDER BY heading_count DESC
 '@,
